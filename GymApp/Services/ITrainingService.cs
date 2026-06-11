@@ -6,6 +6,6 @@ namespace GymApp.Services
 {
     public interface ITrainingService
     {
-        List<Training> GetTrainingsInTheLastMonth(Guid trainerId);
+        List<Trainer> GetTrainingsInTheLastMonth(Guid trainerId);
     }
 }

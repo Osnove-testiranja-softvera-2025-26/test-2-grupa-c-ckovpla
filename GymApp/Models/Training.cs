@@ -3,7 +3,7 @@
 
 namespace GymApp.Models
 {
-    public class Training
+    public class Trainer
     {
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }

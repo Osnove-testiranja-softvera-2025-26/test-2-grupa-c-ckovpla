@@ -1,80 +1,107 @@
 ﻿
-
+using GymApp.Test;
 using GymApp.Exceptions;
 using GymApp.Models;
 using System.Collections.Generic;
 
 namespace GymApp.Services
 {
-    public class GymService
+
+    namespace GymApp
     {
-        private readonly IPaymentService _paymentService;
-        private readonly ITrainingService _trainingService;
-        private readonly ITrainerPerformanceService _trainerPerformanceService;
-
-        public void DoStaffBonusPaymentCalculation(Trainer trainer)
+        public class GymService
         {
-            
-            List<Training> trainings = _trainingService.GetTrainingsInTheLastMonth(trainer.Id);
-            if(trainings.Count == 0)
-            {
-                throw new NoTrainingsInTheLastMonthException("Bonus payment cannot be calculated");
-            }
-            int numberOfGroupTrainigs = trainings.FindAll(x => x.Type.Equals(TrainingType.Group)).Count;
-            PerformanceReport performanceReport = _trainerPerformanceService.GetTrainerPerformanceReport(trainer.Id);
-            
-            BonusPayment bonus = new BonusPayment();
+            private readonly IPaymentService _paymentService;
+            private readonly ITrainingService _trainingService;
+            private readonly ITrainerPerformanceService _trainerPerformanceService;
 
-            if (performanceReport.PerformanceRank.Equals(PerformanceRank.Second) && performanceReport.PercentOfTrainingsNotHeld < 10)
+            public GymService(IPaymentService paymentService,
+                              ITrainingService trainingService,
+                              ITrainerPerformanceService trainerPerformanceService)
             {
-                if (performanceReport.NumberOfFreeDaysLeft > 13)
+                _paymentService = paymentService;
+                _trainingService = trainingService;
+                _trainerPerformanceService = trainerPerformanceService;
+            }
+
+            public GymService(FakePaymentService fakePaymentService, FakeTrainerPerformanceService fakeTrainerPerformanceService, FakeTrainingService fakeTrainingService)
+            {
+                FakePaymentService = fakePaymentService;
+                FakeTrainerPerformanceService = fakeTrainerPerformanceService;
+                FakeTrainingService = fakeTrainingService;
+            }
+
+            public IPaymentService PaymentService { get; }
+            public ITrainingService TrainingService { get; }
+            public ITrainerPerformanceService PerformanceService { get; }
+            public FakePaymentService FakePaymentService { get; }
+            public FakeTrainerPerformanceService FakeTrainerPerformanceService { get; }
+            public FakeTrainingService FakeTrainingService { get; }
+
+            public void DoStaffBonusPaymentCalculation(Trainer trainer)
+            {
+
+                List<Trainer> trainings = _trainingService.GetTrainingsInTheLastMonth(trainer.Id);
+                if (trainings.Count == 0)
                 {
-                    bonus.Amount = 150.0;
+                    throw new NoTrainingsInTheLastMonthException("Bonus payment cannot be calculated");
+                }
+                int numberOfGroupTrainigs = trainings.FindAll(x => x.Type.Equals(TrainingType.Group)).Count;
+                PerformanceReport performanceReport = _trainerPerformanceService.GetTrainerPerformanceReport(trainer.Id);
+
+                BonusPayment bonus = new BonusPayment();
+
+                if (performanceReport.PerformanceRank.Equals(PerformanceRank.Second) && performanceReport.PercentOfTrainingsNotHeld < 10)
+                {
+                    if (performanceReport.NumberOfFreeDaysLeft > 13)
+                    {
+                        bonus.Amount = 150.0;
+                    }
+                    else
+                    {
+                        bonus.Amount = 120.0;
+                    }
+                }
+                else if (performanceReport.PerformanceRank.Equals(PerformanceRank.First))
+                {
+                    if (numberOfGroupTrainigs >= 7 || performanceReport.PercentOfTrainingsNotHeld < 5)
+                    {
+                        bonus.Amount = 200.0;
+                    }
+                    else
+                    {
+                        bonus.Amount = 150.0;
+                    }
                 }
                 else
                 {
-                    bonus.Amount = 120.0;
+                    bonus.Amount = 0;
                 }
-            }
-            else if (performanceReport.PerformanceRank.Equals(PerformanceRank.First))
-            {
-                if (numberOfGroupTrainigs >= 7 || performanceReport.PercentOfTrainingsNotHeld < 5)
-                {
-                    bonus.Amount = 200.0;
-                }
-                else
-                {
-                    bonus.Amount = 150.0;
-                }
-            }
-            else
-            {
-                bonus.Amount = 0;
+
+                _paymentService.UpdateTrainerBonusPayment(trainer.Id, bonus);
             }
 
-            _paymentService.UpdateTrainerBonusPayment(trainer.Id, bonus);
-        }
-
-        public MembershipType? GetMemberhipType(int numberOfMonths, bool groupTrainings, double monthlyPriceBudget, TrainingTime trainingTime)
-        {
-            if (trainingTime.Equals(TrainingTime.WholeDay))
+            public MembershipType? GetMemberhipType(int numberOfMonths, bool groupTrainings, double monthlyPriceBudget, TrainingTime trainingTime)
             {
-                if (numberOfMonths >= 5 && monthlyPriceBudget > 20.0)
+                if (trainingTime.Equals(TrainingTime.WholeDay))
                 {
-                    if (groupTrainings)
-                        return MembershipType.TypeA;
-                    return MembershipType.TypeB;
+                    if (numberOfMonths >= 5 && monthlyPriceBudget > 20.0)
+                    {
+                        if (groupTrainings)
+                            return MembershipType.TypeA;
+                        return MembershipType.TypeB;
+                    }
+                    return null;
                 }
-                return null;
-            }
-            else if (trainingTime.Equals(TrainingTime.OnlyMorning))
-            {
-                if (numberOfMonths > 12 || monthlyPriceBudget > 15.0)
-                    return MembershipType.TypeC;
-                return null;
-            }
+                else if (trainingTime.Equals(TrainingTime.OnlyMorning))
+                {
+                    if (numberOfMonths > 12 || monthlyPriceBudget > 15.0)
+                        return MembershipType.TypeC;
+                    return null;
+                }
 
-            return MembershipType.TypeD;
+                return MembershipType.TypeD;
+            }
         }
     }
 }

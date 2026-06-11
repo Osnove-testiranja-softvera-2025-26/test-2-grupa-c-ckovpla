@@ -1,0 +1,4 @@
+NumberOfMonths: 4, 5, 6, 12, 13
+GroupTrainings: true, false
+MonthlyPriceBudget: 10, 15, 20, 25, 30
+TrainingTime: WholeDay, OnlyMorning, OnlyNight
